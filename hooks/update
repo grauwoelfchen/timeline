@@ -1,0 +1,66 @@
+#!/bin/sh
+
+oldrev=$(git rev-parse $2)
+newrev=$(git rev-parse $3)
+refname="$1"
+
+# if rev does exist, then var is 000000 ...
+if expr "$oldrev" : '0*$' >/dev/null
+then
+  change_type="create"
+else
+  if expr "$newrev" : '0*$' >/dev/null
+  then
+    change_type="delete"
+  else
+    change_type="update"
+  fi
+fi
+
+newrev_type=$(git cat-file -t $newrev 2> /dev/null)
+oldrev_type=$(git cat-file -t "$oldrev" 2> /dev/null)
+
+case "$change_type" in
+create|update)
+  rev="$newrev"
+  rev_type="$newrev_type"
+  ;;
+delete)
+  rev="$oldrev"
+  rev_type="$oldrev_type"
+  ;;
+esac
+
+case "$refname","$rev_type" in
+  refs/tags/*,commit|tag) # tag
+    refname_type="tag"
+    ;;
+  refs/heads/*|refs/remotes/*,commit) # branch
+    refname_type="branch"
+    ;;
+  *)
+    refname_type="unknown"
+esac
+
+ref=$(basename $refname)
+date=$(date)
+#name=$(id -u -n) # git :'(
+name="yasuhiro"
+
+here=$(dirname $0)
+repo=$(basename $(cd $here/../; pwd))
+
+echo "[DEBUG] $name"
+echo "[DEBUG] $change_type"
+echo "[DEBUG] $refname_type"
+echo "[DEBUG] $rev"
+echo "[DEBUG] $rev_type"
+echo "[DEBUG] $ref"
+echo "[DEBUG] $date"
+echo "[DEBUG] $here"
+echo "[DEBUG] $repo"
+
+ruby $here/client.rb $name $change_type $refname_type $ref $rev $repo "$date"
+
+# original update hook
+# sh $here/update.orig $1 $2 $3 $4
